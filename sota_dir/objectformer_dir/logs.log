@@ -1,0 +1,197 @@
+2.0.1+cu117
+Current Torch version: 2.0
+2.0.1+cu117
+Current Torch version: 2.0
+2.0.1+cu117
+Current Torch version: 2.0
+2.0.1+cu117
+Current Torch version: 2.0
+| distributed init (rank 1): env://, gpu 1
+| distributed init (rank 0): env://, gpu 0
+| distributed init (rank 2): env://, gpu 2
+| distributed init (rank 3): env://, gpu 3
+[15:56:22.503522] job dir: /mnt/data0/dubo/workspace/IMDLBenCo/IMDLBenCo/training_scripts
+[15:56:22.503638] =====args:=====
+[15:56:22.503723] Namespace(model='ObjectFormer',
+if_predict_label=False,
+image_size=224,
+if_padding=True,
+if_resizing=False,
+edge_mask_width=7,
+test_data_json='./runs/dgm_datasets.json',
+checkpoint_path='/mnt/data0/dubo/workspace/IMDLBenCo/sota_dir/objectformer_dir',
+test_batch_size=3,
+no_model_eval=False,
+output_dir='/mnt/data0/dubo/workspace/IMDLBenCo/sota_dir/objectformer_dir/',
+log_dir='/mnt/data0/dubo/workspace/IMDLBenCo/sota_dir/objectformer_dir/',
+device='cuda',
+num_workers=1,
+pin_mem=True,
+world_size=4,
+local_rank=-1,
+dist_on_itp=False,
+dist_url='env://',
+rank=0,
+gpu=0,
+distributed=True,
+dist_backend='nccl')
+[15:56:22.503737] =====Model args:=====
+[15:56:22.503762] Namespace(patch_size=16,
+input_size=224,
+num_prototypes=392,
+embedding_dim=768,
+num_layers=8,
+init_weight_path=None)
+[15:56:23.400386] Model = ObjectFormer(
+  (encoder_net_r): Sequential(
+    (0): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+  )
+  (encoder_net_q): Sequential(
+    (0): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+  )
+  (high_freq_extractor): HighFrequencyFeatureExtractor()
+  (encoder_decoders): ModuleList(
+    (0-7): 8 x EncoderDecoder(
+      (encoder): ObjectEncoder(
+        (norm1): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (attn): Attention(
+          (q): Linear(in_features=768, out_features=768, bias=True)
+          (k): Linear(in_features=768, out_features=768, bias=True)
+          (v): Linear(in_features=768, out_features=768, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=768, out_features=768, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (norm2): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=768, out_features=3072, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=3072, out_features=768, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+      )
+      (decoder): PatchDecoder(
+        (norm1): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (attn): Attention(
+          (q): Linear(in_features=768, out_features=768, bias=True)
+          (k): Linear(in_features=768, out_features=768, bias=True)
+          (v): Linear(in_features=768, out_features=768, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=768, out_features=768, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (norm2): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=768, out_features=3072, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0.0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=3072, out_features=768, bias=True)
+          (drop2): Dropout(p=0.0, inplace=False)
+        )
+      )
+      (bcim): BCIM()
+    )
+  )
+  (localization): Sequential(
+    (0): Conv2d(1536, 768, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): Conv2d(768, 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (2): Conv2d(384, 1, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  )
+  (BCE_loss): BCEWithLogitsLoss()
+)
+[15:56:23.417846] Post function check: objectformer_post_func
+[15:56:23.417879]                         Registry of POSTFUNCS                         
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Names             ┃ Objects                                        ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ cat_net_post_func │ <function cat_net_post_func at 0x7fb033c3c220> │
+└───────────────────┴────────────────────────────────────────────────┘
+
+[15:56:23.437724] <IMDLBenCo.datasets.iml_datasets.JsonDataset object at 0x7fb02d012210>
+[15:56:23.437794] len(dataset_test) 3621
+[15:56:23.437914] Sampler_test = <torch.utils.data.distributed.DistributedSampler object at 0x7fb027d43ed0>
+[15:56:23.438652] Start testing on Autosplice! 
+[15:56:23.438884] ['logs.log', 'error.log', 'checkpoint-0.pth', 'Autosplice']
+[15:56:23.438915] sorted checkpoint pairs in the ckpt dir:  [(0, 'checkpoint-0.pth')]
+[15:56:23.438934] Loading checkpoint: checkpoint-0.pth
+[15:56:25.952441] Test: [0]  [  0/302]  eta: 0:11:01  pixel-level F1: 1.4765 (0.4922)  time: 2.1904  data: 0.6639  max mem: 1728
+[15:56:26.760512] Test: [0]  [ 20/302]  eta: 0:00:40  pixel-level F1: 1.1392 (0.4452)  time: 0.0403  data: 0.0002  max mem: 1729
+[15:56:27.563403] Test: [0]  [ 40/302]  eta: 0:00:24  pixel-level F1: 1.0981 (0.4147)  time: 0.0400  data: 0.0004  max mem: 1729
+[15:56:28.365576] Test: [0]  [ 60/302]  eta: 0:00:18  pixel-level F1: 1.3474 (0.4213)  time: 0.0400  data: 0.0002  max mem: 1729
+[15:56:29.163497] Test: [0]  [ 80/302]  eta: 0:00:14  pixel-level F1: 1.2621 (0.4245)  time: 0.0399  data: 0.0001  max mem: 1729
+[15:56:29.962499] Test: [0]  [100/302]  eta: 0:00:12  pixel-level F1: 1.1779 (0.4136)  time: 0.0399  data: 0.0001  max mem: 1729
+[15:56:30.767823] Test: [0]  [120/302]  eta: 0:00:10  pixel-level F1: 1.2516 (0.4167)  time: 0.0402  data: 0.0001  max mem: 1729
+[15:56:31.566083] Test: [0]  [140/302]  eta: 0:00:08  pixel-level F1: 1.3931 (0.4145)  time: 0.0398  data: 0.0001  max mem: 1729
+[15:56:32.362491] Test: [0]  [160/302]  eta: 0:00:07  pixel-level F1: 1.4465 (0.4231)  time: 0.0398  data: 0.0001  max mem: 1729
+[15:56:33.168268] Test: [0]  [180/302]  eta: 0:00:06  pixel-level F1: 1.1585 (0.4254)  time: 0.0402  data: 0.0003  max mem: 1729
+[15:56:33.977278] Test: [0]  [200/302]  eta: 0:00:05  pixel-level F1: 1.2340 (0.4237)  time: 0.0403  data: 0.0003  max mem: 1729
+[15:56:38.136059] Test: [0]  [220/302]  eta: 0:00:05  pixel-level F1: 1.2047 (0.4217)  time: 0.2079  data: 0.1681  max mem: 1729
+[15:56:38.951161] Test: [0]  [240/302]  eta: 0:00:03  pixel-level F1: 1.2691 (0.4236)  time: 0.0407  data: 0.0011  max mem: 1729
+[15:56:39.757406] Test: [0]  [260/302]  eta: 0:00:02  pixel-level F1: 1.4715 (0.4262)  time: 0.0402  data: 0.0001  max mem: 1729
+[15:56:40.576829] Test: [0]  [280/302]  eta: 0:00:01  pixel-level F1: 1.2318 (0.4261)  time: 0.0409  data: 0.0012  max mem: 1729
+[15:56:41.383148] Test: [0]  [300/302]  eta: 0:00:00  pixel-level F1: 1.3704 (0.4279)  time: 0.0403  data: 0.0001  max mem: 1729
+[15:56:41.422548] Test: [0]  [301/302]  eta: 0:00:00  pixel-level F1: 1.3723 (0.4284)  time: 0.0403  data: 0.0001  max mem: 1729
+[15:56:41.534135] Test: [0] Total time: 0:00:17 (0.0589 s / it)
+[15:56:41.534328] ***************************************************************
+[15:56:41.534364] ****An extra tail dataset should exist for accracy metrics!****
+[15:56:41.534389] ***************************************************************
+[15:56:41.534423] **** Length of tail: 9 ****
+[15:56:41.605685] Actual Batchsize/ world_size {'_n': 0.75}
+[15:56:41.605818] {'pixel-level F1': tensor(0.3161, device='cuda:0', dtype=torch.float64)}
+[15:56:41.630996] Test <remaining>: [0]  [0/3]  eta: 0:00:00  pixel-level F1: 1.3723 (0.4284)  time: 0.0954  data: 0.0542  max mem: 1735
+[15:56:41.675868] Actual Batchsize/ world_size {'_n': 0.75}
+[15:56:41.675992] {'pixel-level F1': tensor(0.5183, device='cuda:0', dtype=torch.float64)}
+[15:56:41.702268] Test <remaining>: [0]  [1/3]  eta: 0:00:00  pixel-level F1: 1.3704 (0.4286)  time: 0.0831  data: 0.0421  max mem: 1735
+[15:56:41.749822] Actual Batchsize/ world_size {'_n': 0.75}
+[15:56:41.749943] {'pixel-level F1': tensor(0.3106, device='cuda:0', dtype=torch.float64)}
+[15:56:41.776061] Test <remaining>: [0]  [2/3]  eta: 0:00:00  pixel-level F1: 1.3248 (0.4286)  time: 0.0799  data: 0.0391  max mem: 1735
+[15:56:41.776146] Test <remaining>: [0] Total time: 0:00:00 (0.0803 s / it)
+[15:56:47.234695] ---syncronized---
+[15:56:47.234858] pixel-level F1 reduced_count 3633
+[15:56:47.234888] pixel-level F1 reduced_sum 1527.1828733802822
+[15:56:47.234919] ---syncronized done ---
+[15:56:47.388664] Averaged stats: pixel-level F1: 1.3248 (0.4204)
+[15:56:47.390847] Testing on dataset Autosplice takes 0:00:23
+[15:56:47.395545] <IMDLBenCo.datasets.iml_datasets.JsonDataset object at 0x7fb027d43e10>
+[15:56:47.395579] len(dataset_test) 512
+[15:56:47.395650] Sampler_test = <torch.utils.data.distributed.DistributedSampler object at 0x7fb021f42490>
+[15:56:47.396419] Start testing on CocoGlide! 
+[15:56:47.396468] ['logs.log', 'CocoGlide', 'error.log', 'checkpoint-0.pth', 'Autosplice']
+[15:56:47.396504] sorted checkpoint pairs in the ckpt dir:  [(0, 'checkpoint-0.pth')]
+[15:56:47.396523] Loading checkpoint: checkpoint-0.pth
+[15:56:47.820162] Test: [0]  [ 0/42]  eta: 0:00:06  pixel-level F1: 1.0931 (0.3644)  time: 0.1553  data: 0.1141  max mem: 1735
+[15:56:48.623322] Test: [0]  [20/42]  eta: 0:00:01  pixel-level F1: 1.0934 (0.3721)  time: 0.0401  data: 0.0005  max mem: 1735
+[15:56:49.425274] Test: [0]  [40/42]  eta: 0:00:00  pixel-level F1: 0.8301 (0.3302)  time: 0.0401  data: 0.0001  max mem: 1735
+[15:56:49.464787] Test: [0]  [41/42]  eta: 0:00:00  pixel-level F1: 0.8427 (0.3291)  time: 0.0401  data: 0.0001  max mem: 1735
+[15:56:49.551428] Test: [0] Total time: 0:00:01 (0.0450 s / it)
+[15:56:49.551633] ***************************************************************
+[15:56:49.551648] ****An extra tail dataset should exist for accracy metrics!****
+[15:56:49.551659] ***************************************************************
+[15:56:49.551673] **** Length of tail: 8 ****
+[15:56:49.601975] Actual Batchsize/ world_size {'_n': 0.75}
+[15:56:49.602106] {'pixel-level F1': tensor(0.3078, device='cuda:0', dtype=torch.float64)}
+[15:56:49.628022] Test <remaining>: [0]  [0/3]  eta: 0:00:00  pixel-level F1: 0.8427 (0.3295)  time: 0.0758  data: 0.0354  max mem: 1735
+[15:56:49.671082] Actual Batchsize/ world_size {'_n': 0.75}
+[15:56:49.671190] {'pixel-level F1': tensor(0.3352, device='cuda:0', dtype=torch.float64)}
+[15:56:49.697548] Test <remaining>: [0]  [1/3]  eta: 0:00:00  pixel-level F1: 0.8301 (0.3302)  time: 0.0724  data: 0.0321  max mem: 1735
+[15:56:49.744558] ====================
+[15:56:49.744640] A batch that is not fully loaded was detected at the end of the dataset. The actual batch size for this batch is 2: The default batch size is 3
+[15:56:49.744652] ====================
+[15:56:49.745163] Actual Batchsize/ world_size {'_n': 0.5}
+[15:56:49.745223] {'pixel-level F1': tensor(0.1331, device='cuda:0', dtype=torch.float64)}
+[15:56:49.751761] Test <remaining>: [0]  [2/3]  eta: 0:00:00  pixel-level F1: 0.8301 (0.3300)  time: 0.0662  data: 0.0287  max mem: 1735
+[15:56:49.751883] Test <remaining>: [0] Total time: 0:00:00 (0.0667 s / it)
+[15:56:49.752385] ---syncronized---
+[15:56:49.752409] pixel-level F1 reduced_count 512
+[15:56:49.752429] pixel-level F1 reduced_sum 174.13593502450058
+[15:56:49.752450] ---syncronized done ---
+[15:56:49.922488] Averaged stats: pixel-level F1: 0.8301 (0.3401)
+[15:56:49.927183] Testing on dataset CocoGlide takes 0:00:26
+[15:56:49.927205] Total testing time 0:00:26

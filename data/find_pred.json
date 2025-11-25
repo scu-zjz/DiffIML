@@ -1,0 +1,9 @@
+{
+  "DiffIML": "/mnt/data0/yunfei/workspace/IMDLBenCo/log/ckpt_dir/checkpoint-36.pth",
+  "MantraNet": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/MantraNet_pretrain.pth",
+  "Cat_Net": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/cat_net_casiav2.pth",
+  "MVSSNet": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/checkpoint-mvss-casiav2.pth",
+  "PSCC_Net": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/pscc_casiav2.pth",
+  "Trufor": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/trufor_casiav2.pth",
+  "ObjectFormer": "/mnt/data0/yunfei/workspace/IMDLBenCo/ckpt/IMDLBenCo_ckpt/objectformer_casiav2.pth"
+}

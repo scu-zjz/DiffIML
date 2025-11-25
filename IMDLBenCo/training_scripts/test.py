@@ -1,24 +1,44 @@
-import os
-import json
-import time
-import types
-import inspect
 import argparse
+import inspect
 import datetime
+import json
+import numpy as np
+import os
+import time
 from pathlib import Path
-import albumentations as albu
+import types
+import torch
+import torch.backends.cudnn as cudnn
+import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
+import sys
+sys.path.append(".")
+import timm.optim.optim_factory as optim_factory
 
-import IMDLBenCo.training_scripts.utils.misc as misc
+import utils.misc as misc
 
 from IMDLBenCo.registry import MODELS, POSTFUNCS
-from IMDLBenCo.datasets import ManiDataset, JsonDataset
-from IMDLBenCo.evaluation import PixelF1, ImageF1    # TODO You can select evaluator you like here
+from IMDLBenCo.datasets import ManiDataset, JsonDataset, BalancedDataset
+from IMDLBenCo.transforms import get_albu_transforms
+from IMDLBenCo.evaluation import PixelF1, ImageF1
 
-from IMDLBenCo.training_scripts.tester import test_one_epoch
+from tester import test_one_epoch
+
+from IMDLBenCo.model_zoo import IML_ViT
 
 def get_args_parser():
     parser = argparse.ArgumentParser('IMDLBench testing launch!', add_help=True)
+    # ++++++++++++TODO++++++++++++++++
+    # 这里是每个模型定制化的input区域，包括load与训练模型，模型的magic number等等
+    # 需要根据你们的模型定制化修改这里 
+    # 目前这里的内容都是仅仅给IML-ViT用的
+    # parser.add_argument('--vit_pretrain_path', default = None, type=str, help='path to vit pretrain model by MAE')
+    # parser.add_argument('--edge_broaden', default=7, type=int,
+    #                     help='Edge broaden size (in pixels) for edge_generator.')
+    # parser.add_argument('--edge_lambda', default=20, type=float,
+    #                     help='hyper-parameter of the weight for proposed edge loss.')
+    # parser.add_argument('--predict_head_norm', default="BN", type=str,
+    #                     help="norm for predict head, can be one of 'BN', 'LN' and 'IN' (batch norm, layer norm and instance norm). It may influnce the result  on different machine or datasets!")
     # -------------------------------
     # Model name
     parser.add_argument('--model', default=None, type=str,
@@ -93,28 +113,8 @@ def main(args, model_args):
     print("=====Model args:=====")
     print("{}".format(model_args).replace(', ', ',\n'))
     device = torch.device(args.device)
-
-    """=========================================================
-    You Can Modify code below to customize your data augmentation TODO
-    ========================================================="""
-    test_transform = albu.Compose([
-        # ---Blow for robustness evalution---
-        # albu.Resize(512, 512),
-        #   albu.JpegCompression(
-        #         quality_lower = 89,
-        #         quality_upper = 90,
-        #         p = 1
-        #   ),
-        #  albu.GaussianBlur(
-        #         blur_limit = (5, 5),
-        #         p = 1
-        #     ),
-        
-        # albu.GaussNoise(
-        #     var_limit=(15, 15),
-        #     p = 1
-        # )
-        ])
+    
+    test_transform = get_albu_transforms('test')
 
     with open(args.test_data_json, "r") as f:
         test_dataset_json = json.load(f)
@@ -136,25 +136,15 @@ def main(args, model_args):
     # --------------- or -------------------------
     # Init model with registry
     model = MODELS.get(args.model)
-    
     # Filt usefull args
     if isinstance(model,(types.FunctionType, types.MethodType)):
         model_init_params = inspect.signature(model).parameters
     else:
         model_init_params = inspect.signature(model.__init__).parameters
-        
     combined_args = {k: v for k, v in vars(args).items() if k in model_init_params}
-    for k, v in vars(model_args).items():
-        if k in model_init_params and k not in combined_args:
-            combined_args[k] = v
+    combined_args.update({k: v for k, v in vars(model_args).items() if k in model_init_params})
     model = model(**combined_args)
     # ============================================
-
-    """
-    TODO Set the evaluator you want to use
-    You can use PixelF1, ImageF1, or any other evaluator you like.
-    Available evaluators are in: https://github.com/scu-zjz/IMDLBenCo/blob/main/IMDLBenCo/evaluation/__init__.py
-    """    
     evaluator_list = [
         PixelF1(threshold=0.5, mode="origin"),
         # ImageF1(threshold=0.5)
@@ -174,19 +164,14 @@ def main(args, model_args):
     
     start_time = time.time()
     # get post function (if have)
-    post_function_name = f"{args.model.lower()}_post_func"
+    post_function_name = f"{args.model}_post_func".lower()
     print(f"Post function check: {post_function_name}")
     print(POSTFUNCS)
-    try:
-        post_function = POSTFUNCS.get_lower(post_function_name)
-        print(f"Post function loaded: {post_function}")
-    except Exception as e:
-        print(f"Post function {post_function_name} not found, using default post function.")
-        print(e)
+    if POSTFUNCS.has(post_function_name):
+        post_function = POSTFUNCS.get(post_function_name)
+    else:
         post_function = None
     
-    dataset_dict = {}
-    dataset_logger = {}
     # Start go through each datasets:
     for dataset_name, dataset_path in test_dataset_json.items():
         args.full_log_dir = os.path.join(args.log_dir, dataset_name)
@@ -196,7 +181,6 @@ def main(args, model_args):
             log_writer = SummaryWriter(log_dir=args.full_log_dir)
         else:
             log_writer = None
-        dataset_logger[dataset_name] = log_writer
         
         # ---- dataset with crop augmentation ----
         if os.path.isdir(dataset_path):
@@ -230,61 +214,55 @@ def main(args, model_args):
                 dataset_test, 
                 num_replicas=num_tasks, 
                 rank=global_rank, 
-                shuffle=False,
-                drop_last=True
+                shuffle=False
             )
             print("Sampler_test = %s" % str(sampler_test))
         else:
             sampler_test = torch.utils.data.RandomSampler(dataset_test)
 
-        dataloader_test = torch.utils.data.DataLoader(
+        data_loader_test = torch.utils.data.DataLoader(
             dataset_test, 
             sampler=sampler_test,
             batch_size=args.test_batch_size,
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
-            drop_last=True,
+            drop_last=False,
         )
-        dataset_dict[dataset_name] = dataloader_test
-    print("dataset_dict", dataset_dict)
 
-    
-    chkpt_list = os.listdir(args.checkpoint_path)
-    print(chkpt_list)
-    chkpt_pair = [(int(chkpt.split('-')[1].split('.')[0]) , chkpt) for chkpt in chkpt_list if chkpt.endswith(".pth")]
-    chkpt_pair.sort(key=lambda x: x[0])
-    print( "sorted checkpoint pairs in the ckpt dir: ",chkpt_pair)
-    for epoch , chkpt_dir in chkpt_pair:
-        if chkpt_dir.endswith(".pth"):
-            print("Loading checkpoint: %s" % chkpt_dir)
-            ckpt = os.path.join(args.checkpoint_path, chkpt_dir)
-            ckpt = torch.load(ckpt, map_location=args.device, weights_only=False)
-            model.module.load_state_dict(ckpt['model'])     
-            
-            for dataset_name, dataloader_test in dataset_dict.items():
-                print("Testing on dataset: %s" % dataset_name)
+        print(f"Start testing on {dataset_name}! ")
+
+        chkpt_list = os.listdir(args.checkpoint_path)
+        print(chkpt_list)
+        chkpt_pair = [(int(chkpt.split('-')[1].split('.')[0]) , chkpt) for chkpt in chkpt_list if chkpt.endswith(".pth")]
+        chkpt_pair.sort(key=lambda x: x[0])
+        print( "sorted checkpoint pairs in the ckpt dir: ",chkpt_pair)
+        for epoch , chkpt_dir in chkpt_pair:
+            if chkpt_dir.endswith(".pth"):
+                print("Loading checkpoint: %s" % chkpt_dir)
+                ckpt = os.path.join(args.checkpoint_path, chkpt_dir)
+                ckpt = torch.load(ckpt, map_location='cuda', weights_only=False)
+                model.module.load_state_dict(ckpt['model'])            
                 test_stats = test_one_epoch(
                     model=model,
-                    data_loader=dataloader_test,
+                    data_loader=data_loader_test,
                     evaluator_list=evaluator_list,
                     device=device,
                     epoch=epoch,
-                    name="normal",
-                    log_writer=dataset_logger[dataset_name],
+                    log_writer=log_writer,
                     args=args
                 )
                 log_stats = {
                     **{f'test_{k}': v for k, v in test_stats.items()},
-                        'epoch': epoch
-                }
+                        'epoch': epoch}
+            
                 if args.full_log_dir and misc.is_main_process():
-                    if dataset_logger[dataset_name] is not None:
-                        dataset_logger[dataset_name].flush()
+                    if log_writer is not None:
+                        log_writer.flush()
                     with open(os.path.join(args.full_log_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                         f.write(json.dumps(log_stats) + "\n")
         local_time = time.time() - start_time
         local_time_str = str(datetime.timedelta(seconds=int(local_time)))
-        print(f'Testing on ckpt {chkpt_dir} takes {local_time_str}')
+        print(f'Testing on dataset {dataset_name} takes {local_time_str}')
         
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

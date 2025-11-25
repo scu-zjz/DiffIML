@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import IMDLBenCo
 import IMDLBenCo.datasets
 from IMDLBenCo.datasets import ManiDataset
-from IMDLBenCo.datasets.jpeg_dataset_deprecated import MetaCatnetDataset
+from IMDLBenCo.datasets.jpeg_dataset import MetaCatnetDataset
 from IMDLBenCo.registry import DATASETS
 import torch
 
@@ -46,7 +46,7 @@ for i in dataloader:
     plt.imshow(i['mask'][1][0])
     
     # test for evaluation split
-    # regin_mask = genertate_region_mask(i['masks'], i['shapes'])
+    # regin_mask = generate_region_mask(i['masks'], i['shapes'])
     plt.subplot(3, 2, 3)
     plt.title('shape_mask')
     plt.imshow(i['shape_mask'][0][0])

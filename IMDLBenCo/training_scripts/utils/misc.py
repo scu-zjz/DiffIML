@@ -33,21 +33,16 @@ class SmoothedValue(object):
 
     def __init__(self, window_size=20, fmt=None):
         if fmt is None:
-            # fmt = "{median:.4f} ({global_avg:.4f})"  # original
-            fmt = "[local: {median:.4f} | reduced: {global_avg:.4f}]"  # detailed
-            # fmt = "{global_avg:.4f}" # only report global avg
+            fmt = "{median:.4f} ({global_avg:.4f})"
         self.deque = deque(maxlen=window_size)
         self.total = 0.0
         self.count = 0
         self.fmt = fmt
 
     def update(self, value, n=1):
-        """
-        Value here in IMDLBenCo is a sum of [BatchSize, 1]. n refer to the number of samples in the batch.
-        This value is considered as sum of a batch in a signle GPU. 
-        """
-        self.deque.append(value / n) # value is a sum of n samples, to avoid issue like F1 > 1.0 during report, need to divide by n.
+        self.deque.append(value)
         self.count += n
+        # self.total += value * n
         self.total += value # No n
 
     def synchronize_between_processes(self):
@@ -176,13 +171,8 @@ class MetricLogger(object):
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-
-        if len(iterable) == 0:
-            print('Total time: {} (Alert! No Iteration in this sample!)'.format(
-                total_time_str, total_time))
-        else:
-            print('{} Total time: {} ({:.4f} s / it)'.format(
-                header, total_time_str, total_time / len(iterable)))
+        print('{} Total time: {} ({:.4f} s / it)'.format(
+            header, total_time_str, total_time / len(iterable)))
 
 
 def setup_for_distributed(is_master):

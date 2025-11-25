@@ -8,14 +8,9 @@ from .abstract_dataset import AbstractDataset
 @DATASETS.register_module()
 class ManiDataset(AbstractDataset):
     def _init_dataset_path(self, path):
-        self.entry_path = path
+        path = path
         tp_dir = os.path.join(path, 'Tp')
         gt_dir = os.path.join(path, 'Gt')
-        
-        assert os.path.isdir(path), NotADirectoryError(f"Get Error when loading from {self.entry_path}, the path is not a directory. Please check the path.")
-        assert os.path.isdir(tp_dir), NotADirectoryError(f"Get Error when loading from {tp_dir}, the Tp directory is not exist. Please check the path.")
-        assert os.path.isdir(gt_dir), NotADirectoryError(f"Get Error when loading from {gt_dir}, the Gt directory is not exist. Please check the path.")
-        
         tp_list = os.listdir(tp_dir)
         gt_list = os.listdir(gt_dir)
         # Use sort mathod to keep order, to make sure the order is the same as the order in the tp_list and gt_list
@@ -44,11 +39,7 @@ class JsonDataset(AbstractDataset):
         if_return_shape
     """
     def _init_dataset_path(self, path):
-        self.entry_path = path
-        try:
-            images = json.load(open(path, 'r'))
-        except:
-            raise TypeError(f"Get Error when loading from {self.entry_path}, please check the file format, it should be a json file, and the content should be like: [['./Tp/6.jpg', './Gt/6.jpg'], ['./Tp/7.jpg', './Gt/7.jpg'], ['./Tp/8.jpg', 'Negative'], ......]")
+        images = json.load(open(path, 'r'))
         tp_list = []
         gt_list = []
         for record in images:
@@ -56,6 +47,6 @@ class JsonDataset(AbstractDataset):
                 tp_list.append(record[0])
                 gt_list.append(record[1])
             else: 
-                raise TypeError(f"Get Error when loading from {self.entry_path}, the error record is: {record[0]}, which is not a file. Please check this file or try to use absolute path instead. Otherwise if you want to use ManiDataset with a path instead of JsonDataset, please pass a path into the 'train_*.sh'. For more information please see the protocol here: https://scu-zjz.github.io/IMDLBenCo-doc/guide/quickstart/0_dataprepare.html#specific-format-definitions")
+                raise TypeError("Not a file in Json Dataset Error. Try other dataset")
         return tp_list, gt_list
 

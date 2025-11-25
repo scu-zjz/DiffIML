@@ -20,34 +20,8 @@ class AbstractDataset(Dataset):
         
         raise NotImplementedError # abstract dataset!
     
-        return tp_path, gt_path # returns shuold be look like this
-    
-    def _get_image(self, index):
-        tp_path = self.tp_path[index]
-        gt_path = self.gt_path[index]
+        return tp_path, gt_path, labels
         
-        # pil_loader or jpeg_loader
-        tp_img = self.img_loader(tp_path)
-        # shape, here is PIL Image
-        tp_shape = tp_img.size
-        
-        # if "negative" then gt is a image with all 0
-        if gt_path != "Negative":
-            gt_img = self.img_loader(gt_path)
-            gt_shape = gt_img.size
-            label = 1
-        else:
-            temp = np.array(tp_img)
-            gt_img = np.zeros((temp.shape[0], temp.shape[1], 3))
-            gt_shape = (temp.shape[1], temp.shape[0])
-            label = 0
-            
-        assert tp_shape == gt_shape, "tp and gt image shape must be the same, but got shape {} and {} for image '{}' and '{}'. Please check it!".format(tp_shape, gt_shape, tp_path, gt_path)
-        
-        tp_img = np.array(tp_img) # H W C
-        gt_img = np.array(gt_img) # H W C
-        return tp_img, gt_img, label, tp_shape, gt_shape, tp_path, gt_path
-    
     def __init__(self, path, 
                 is_padding = False,
                 is_resizing = False,
@@ -58,7 +32,6 @@ class AbstractDataset(Dataset):
                 post_funcs = None
                 ) -> None:
         super().__init__()
-        self.entry_path = "Abstract"
         self.tp_path, self.gt_path = self._init_dataset_path(path)
         
         if is_padding == True and is_resizing == True:
@@ -84,24 +57,40 @@ class AbstractDataset(Dataset):
 
         self.img_loader = img_loader
         self.post_funcs = post_funcs
-    
-
         
     def __getitem__(self, index):
 
         data_dict = dict()
-        tp_img, gt_img, label, tp_shape, gt_shape, tp_path, gt_path = self._get_image(index)
+        
+        tp_path = self.tp_path[index]
+        gt_path = self.gt_path[index]
+        
+        # pil_loader or jpeg_loader
+        tp_img = self.img_loader(tp_path)
+        # shape, here is PIL Image
+        tp_shape = tp_img.size
+        
+        # if "negative" then gt is a image with all 0
+        if gt_path != "Negative":
+            gt_img = self.img_loader(gt_path)
+            gt_shape = gt_img.size
+            label = 1
+        else:
+            temp = np.array(tp_img)
+            gt_img = np.zeros((temp.shape[0], temp.shape[1], 3))
+            gt_shape = (temp.shape[1], temp.shape[0])
+            label = 0
+            
+        assert tp_shape == gt_shape, "tp and gt image shape must be the same, but got {} and {}".format(tp_shape, gt_shape)
+        
+        tp_img = np.array(tp_img) # H W C
+        gt_img = np.array(gt_img) # H W C
         
         # Do augmentations
         if self.common_transforms != None:
             res_dict = self.common_transforms(image = tp_img, mask = gt_img)
             tp_img = res_dict['image']
             gt_img = res_dict['mask']
-            # copy_move may cause the label change, so we need to update the label
-            if np.all(gt_img == 0):
-                label = 0
-            else:
-                label = 1
             
         # redefine the shape, here is np.array
         tp_shape = tp_img.shape[0:2]  # H, W, 3 去掉最后一个3
@@ -137,7 +126,7 @@ class AbstractDataset(Dataset):
         data_dict['image'] = tp_img
         data_dict['mask'] = gt_img
         data_dict['label'] = label
-        data_dict['origin_shape'] = torch.tensor(tp_shape) # (H, W) 经过data loader后会变成三维矩阵，第0维是batch_index
+       
         # 如果经过resize
         if self.is_resizing:
             tp_shape = self.output_size
@@ -174,10 +163,3 @@ class AbstractDataset(Dataset):
         
     def __len__(self):
         return len(self.tp_path)
-    
-    def __str__(self):
-        cls_name = self.__class__.__name__
-        cls_path = self.entry_path
-        cls_len = len(self.tp_path)
-        info = f"[{cls_name}] at {cls_path}, with length of {cls_len:,}"
-        return info

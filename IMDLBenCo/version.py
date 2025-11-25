@@ -1,4 +1,4 @@
-__version__ = '0.1.42'
+__version__ = '0.1.1'
 short_version = __version__
 
 def parse_version_info(version_str):
@@ -19,5 +19,6 @@ def parse_version_info(version_str):
             version_info.append(int(patch_version[0]))
             version_info.append(f'rc{patch_version[1]}')
     return tuple(version_info)
+
 
 version_info = parse_version_info(__version__)

@@ -1,32 +1,45 @@
-import os
-import json
-import time
-import types
-import inspect
 import argparse
+import inspect
 import datetime
+import json
 import numpy as np
+import os
+import time
 from pathlib import Path
+import types
+import torch
+import torch.backends.cudnn as cudnn
+import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
+import sys
+sys.path.append(".")
+import timm.optim.optim_factory as optim_factory
 
-import IMDLBenCo.training_scripts.utils.misc as misc
+import utils.misc as misc
 
 from IMDLBenCo.registry import MODELS, POSTFUNCS
-from IMDLBenCo.datasets import ManiDataset, JsonDataset
+from IMDLBenCo.datasets import ManiDataset, JsonDataset, BalancedDataset
+from IMDLBenCo.transforms import get_albu_transforms
+from IMDLBenCo.evaluation import PixelF1, ImageF1
 
-from IMDLBenCo.evaluation import PixelF1, ImageF1 # TODO You can select evaluator you like here
+from tester import test_one_epoch
 
-from IMDLBenCo.training_scripts.tester import test_one_epoch
-
-# robustness wrappers
-from IMDLBenCo.transforms.robustness_wrapper import (
-    GaussianBlurWrapper,
-    GaussianNoiseWrapper,
-    JpegCompressionWrapper
-)
+from IMDLBenCo.model_zoo import IML_ViT
 
 def get_args_parser():
     parser = argparse.ArgumentParser('IMDLBench Robustness test Launch!', add_help=True)
+    # ++++++++++++TODO++++++++++++++++
+    # 这里是每个模型定制化的input区域，包括load与训练模型，模型的magic number等等
+    # 需要根据你们的模型定制化修改这里 
+    # 目前这里的内容都是仅仅给IML-ViT用的
+    # parser.add_argument('--vit_pretrain_path', default = None, type=str, help='path to vit pretrain model by MAE')
+    # parser.add_argument('--edge_broaden', default=7, type=int,
+    #                     help='Edge broaden size (in pixels) for edge_generator.')
+    # parser.add_argument('--edge_lambda', default=20, type=float,
+    #                     help='hyper-parameter of the weight for proposed edge loss.')
+    # parser.add_argument('--predict_head_norm', default="BN", type=str,
+    #                     help="norm for predict head, can be one of 'BN', 'LN' and 'IN' (batch norm, layer norm and instance norm). It may influnce the result  on different machine or datasets!")
+    # -------------------------------
     # Model name
     parser.add_argument('--model', default=None, type=str,
                         help='The name of applied model', required=True)
@@ -64,8 +77,6 @@ def get_args_parser():
     
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
-    # Since augmentation includes randomize functions, here need to set the seeds
-    parser.add_argument('--seed', default=42, type=int)
 
     parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--pin_mem', action='store_true',
@@ -102,13 +113,6 @@ def main(args, model_args):
     print("{}".format(model_args).replace(', ', ',\n'))
     device = torch.device(args.device)
     
-    # Since augmentation includes randomize functions, here need to set the seeds
-    # fix the seed for reproducibility
-    seed = args.seed + misc.get_rank()
-    misc.seed_torch(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    
     if args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
@@ -131,26 +135,20 @@ def main(args, model_args):
     else:
         model_init_params = inspect.signature(model.__init__).parameters
     combined_args = {k: v for k, v in vars(args).items() if k in model_init_params}
-    for k, v in vars(model_args).items():
-        if k in model_init_params and k not in combined_args:
-            combined_args[k] = v
+    combined_args.update({k: v for k, v in vars(model_args).items() if k in model_init_params})
     model = model(**combined_args)
     # ============================================
-
-    """=================================================
-    Modify here to Set the robustness test parameters TODO
-    ==================================================="""
+    from IMDLBenCo.transforms.robustness_wrapper import (
+        GaussianBlurWrapper,
+        GaussianNoiseWrapper,
+        JpegCompressionWrapper
+    )
     robustness_list = [
             GaussianBlurWrapper([0, 3, 7, 11, 15, 19, 23]),
             GaussianNoiseWrapper([3, 7, 11, 15, 19, 23]), 
             JpegCompressionWrapper([50, 60, 70, 80, 90, 100])
     ]
-
-    """
-    TODO Set the evaluator you want to use
-    You can use PixelF1, ImageF1, or any other evaluator you like.
-    Available evaluators are in: https://github.com/scu-zjz/IMDLBenCo/blob/main/IMDLBenCo/evaluation/__init__.py
-    """    
+    
     evaluator_list = [
         PixelF1(threshold=0.5, mode="origin"),
         # ImageF1(threshold=0.5)
@@ -172,15 +170,12 @@ def main(args, model_args):
     
     start_time = time.time()
     # get post function (if have)
-    post_function_name = f"{args.model.lower()}_post_func"
+    post_function_name = f"{args.model}_post_func".lower()
     print(f"Post function check: {post_function_name}")
     print(POSTFUNCS)
-    try:
-        post_function = POSTFUNCS.get_lower(post_function_name)
-        print(f"Post function loaded: {post_function}")
-    except Exception as e:
-        print(f"Post function {post_function_name} not found, using default post function.")
-        print(e)
+    if POSTFUNCS.has(post_function_name):
+        post_function = POSTFUNCS.get(post_function_name)
+    else:
         post_function = None
     
     for attack_wrapper in robustness_list:
@@ -194,6 +189,7 @@ def main(args, model_args):
             else:
                 log_writer = None
         
+            # TODO -------TBK的代码需要修改这里，其他人不用-------
             # ---- dataset with crop augmentation ----
             if os.path.isdir(args.test_data_path):
                 dataset_test = ManiDataset(
@@ -225,8 +221,7 @@ def main(args, model_args):
                     dataset_test, 
                     num_replicas=num_tasks, 
                     rank=global_rank, 
-                    shuffle=False,
-                    drop_last=True
+                    shuffle=False
                 )
                 print("Sampler_test = %s" % str(sampler_test))
             else:
@@ -243,12 +238,13 @@ def main(args, model_args):
 
             print(f"Start testing on {attack_wrapper}! ")
 
-            checkpoint_path = args.checkpoint_path
-            print(checkpoint_path)
+            chkpt_dir = args.checkpoint_path
+            print(chkpt_dir)
 
-            if checkpoint_path.endswith(".pth"):
-                print("Loading checkpoint: %s" % checkpoint_path)
-                ckpt = torch.load(checkpoint_path, map_location=args.device, weights_only=False)
+            if chkpt_dir.endswith(".pth"):
+                print("Loading checkpoint: %s" % chkpt_dir)
+                ckpt = os.path.join(args.checkpoint_path, chkpt_dir)
+                ckpt = torch.load(ckpt, map_location='cuda')
                 model.module.load_state_dict(ckpt['model'])            
                 test_stats = test_one_epoch(
                     model=model,
@@ -256,7 +252,6 @@ def main(args, model_args):
                     evaluator_list=evaluator_list,
                     device=device,
                     epoch=attack_param,
-                    name="robustness",
                     log_writer=log_writer,
                     args=args
                 )

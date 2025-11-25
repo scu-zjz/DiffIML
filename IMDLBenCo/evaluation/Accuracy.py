@@ -1,3 +1,4 @@
+# TODO JZH
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,9 +6,8 @@ import numpy as np
 from .abstract_class import AbstractEvaluator
 import torch.distributed as dist
 import os
-from IMDLBenCo.training_scripts.utils import misc
 
-class ImageAccuracyNoRemain(AbstractEvaluator):
+class Image_Accuracy(AbstractEvaluator):
     def __init__(self, threshold=0.5) -> None:
         super().__init__()
         self.name = "image-level Accuracy"
@@ -17,7 +17,6 @@ class ImageAccuracyNoRemain(AbstractEvaluator):
         self.cnt = torch.tensor(0.0, dtype=torch.float64, device='cuda')
 
     def batch_update(self, predict_label, label, *args, **kwargs):
-        self._chekc_image_level_params(predict_label, label)
         predict = (predict_label > self.threshold).float().cuda()
         self.true_cnt += torch.tensor(torch.sum(predict * label).item() + torch.sum((1 - predict) * (1 - label)).item(), dtype=torch.float64, device='cuda')
         self.cnt += torch.tensor(len(label), dtype=torch.float64, device='cuda')
@@ -36,70 +35,7 @@ class ImageAccuracyNoRemain(AbstractEvaluator):
         self.true_cnt = torch.tensor(0.0, dtype=torch.float64, device='cuda')
         self.cnt = torch.tensor(0.0, dtype=torch.float64, device='cuda')
 
-
-class ImageAccuracy(AbstractEvaluator):
-    def __init__(self, threshold=0.5) -> None:
-        super().__init__() 
-        self.name = "image-level Accuracy"
-        self.desc = "image-level Accuracy"
-        self.threshold = threshold
-        self.predict = []
-        self.label = []
-        self.remain_label = []
-        self.remain_predict = []
-        self.world_size = misc.get_world_size()
-        self.local_rank = misc.get_rank()
-
-    def batch_update(self, predict_label, label, *args, **kwargs):
-        self._chekc_image_level_params(predict_label, label)
-        self.predict.append(predict_label)
-        self.label.append(label)
-        return None
-        
-    def remain_update(self, predict_label, label, *args, **kwargs):
-        self._chekc_image_level_params(predict_label, label)
-        self.remain_predict.append(predict_label)
-        self.remain_label.append(label)
-        return None
-
-    def epoch_update(self):
-        if len(self.predict) != 0:
-            predict = torch.cat(self.predict, dim=0)
-            label = torch.cat(self.label, dim=0)
-            gather_predict_list = [torch.zeros_like(predict) for _ in range(self.world_size)]
-            gather_label_list = [torch.zeros_like(label) for _ in range(self.world_size)]
-            dist.all_gather(gather_predict_list, predict)
-            dist.all_gather(gather_label_list, label)
-            gather_predict = torch.cat(gather_predict_list, dim=0)
-            gather_label = torch.cat(gather_label_list, dim=0) 
-            if len(self.remain_predict) != 0:
-                self.remain_predict = torch.cat(self.remain_predict, dim=0)
-                self.remain_label = torch.cat(self.remain_label, dim=0)
-                gather_predict = torch.cat([gather_predict, self.remain_predict], dim=0)
-                gather_label = torch.cat([gather_label, self.remain_label], dim=0)
-        else:
-            if len(self.remain_predict) == 0:
-                raise RuntimeError(f"No data to calculate {self.name}, please check the input data.")
-            gather_predict = torch.cat(self.remain_predict, dim=0)
-            gather_label = torch.cat(self.remain_label, dim=0)
-        # Calculate the accuracy
-        binary_predict = (gather_predict > self.threshold).float()
-        # print("binary_predict", binary_predict.shape)
-        correct = (torch.sum(binary_predict == gather_label)).sum().item()
-        # print("correct", correct)
-        total = gather_predict.shape[0]
-        # print("total", total)
-        acc = correct / total
-        # print("acc", acc)
-        return acc
-    def recovery(self):
-        self.predict = []
-        self.label = []
-        self.remain_label = []
-        self.remain_predict = []
-        return None
-
-class PixelAccuracy(AbstractEvaluator):
+class Pixel_Accuracy(AbstractEvaluator):
     def __init__(self,threshold = 0.5, mode="origin") -> None:
         super().__init__()
         self.name = "pixel-level Accuracy"
@@ -156,7 +92,6 @@ class PixelAccuracy(AbstractEvaluator):
             FN = torch.sum(predict * mask, dim=(1, 2, 3))
         return TP, TN, FP, FN
     def batch_update(self, predict, mask, shape_mask=None, *args, **kwargs):
-        self._check_pixel_level_params(predict, mask)
         if self.mode == "origin":
             TP, TN, FP, FN = self.Cal_Confusion_Matrix(predict, mask, shape_mask)
             ACC = (TP + TN)/(TP + TN + FP + FN)
@@ -169,12 +104,7 @@ class PixelAccuracy(AbstractEvaluator):
             ACC = torch.max((TP + TN)/(TP + TN + FP + FN), (FP + FN)/(TP + TN + FP + FN))
         else:
             raise RuntimeError(f"Cal_ACC no mode name {self.mode}")
-        # print("ACCCCCCCCCC",ACC)
         return ACC
-    
-    def remain_update(self, predict, mask, shape_mask=None, *args, **kwargs):
-        return self.batch_update(predict, mask, shape_mask=None, *args, **kwargs)
-    
     def epoch_update(self):
 
         return None
@@ -202,7 +132,7 @@ def test_origin_image_ACC():
     float_tensor = torch.rand(DATA_LEN * num_gpus).cuda(local_rank)  # 生成一个长度为 200*num_gpus 的浮点数 tensor
     int_tensor = torch.randint(0, 2, (DATA_LEN * num_gpus,)).cuda(local_rank)  # 生成一个包含 0 或 1 的整数 tensor
     
-    evaluator = ImageAccuracy(threshold=0.5)
+    evaluator = Image_Accuracy(threshold=0.5)
     dist.barrier()
     dist.broadcast(float_tensor, src=0)
     dist.broadcast(int_tensor, src=0)
@@ -247,7 +177,7 @@ def test_pixal_ACC():
     # 生成一个 shape_mask
     shape_mask = torch.randint(0, 2, (batch_size, channels, height, width)).float()
     # shape_mask = None
-    acc = PixelAccuracy(mode="origin")
+    acc = Pixel_Accuracy(mode="origin")
     acc_value_pytorch = acc.batch_update(predict, mask, shape_mask)
     print(acc_value_pytorch)
 

@@ -282,7 +282,7 @@ class ResNet50(nn.Module):
         for i, num_this_layer in enumerate(layers_cfg):
             self.blocks.append(list(self.model.children())[num_this_layer])
 
-    def forward_features(self, x, *args, **kwargs):
+    def base_forward(self, x):
         feature_map = []
         x = self.model.conv1(x)
         x = self.model.bn1(x)
@@ -362,7 +362,7 @@ class MVSSNet(ResNet50):
     def forward(self, image, mask, edge_mask, label, *args,  **kwargs):
         size = image.size()[2:]
         input_ = image.clone()
-        feature_map, _ = self.forward_features(input_)
+        feature_map, _ = self.base_forward(input_)
         c1, c2, c3, c4 = feature_map
         if self.sobel:
             res1 = self.erb_db_1(run_sobel(self.sobel_x1, self.sobel_y1, c1))
@@ -379,7 +379,7 @@ class MVSSNet(ResNet50):
         if self.constrain:
             image = rgb2gray(image)
             image = self.constrain_conv(image)
-            constrain_features, _ = self.noise_extractor.forward_features(image)
+            constrain_features, _ = self.noise_extractor.base_forward(image)
             constrain_feature = constrain_features[-1]
             c4 = torch.cat([c4, constrain_feature], dim=1)
 
@@ -399,8 +399,7 @@ class MVSSNet(ResNet50):
 
         out_edge, out_mask = res1, x0
         criterion_BCE = torch.nn.BCEWithLogitsLoss()
-        size_int = tuple([int(x) for x in size])
-        gmp = torch.nn.MaxPool2d(size_int[0])
+        gmp = torch.nn.MaxPool2d(512)
         loss, loss_seg, loss_clf, loss_edg, out_mask, out_edge, out_label = predict_loss(in_imgs=image,
                                                                                                                     in_masks=mask, 
                                                                                                                     in_edges=edge_mask, 

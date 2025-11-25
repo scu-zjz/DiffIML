@@ -13,9 +13,9 @@ from IMDLBenCo.registry import MODELS
 class Trufor(nn.Module):
     def __init__(self,
                  phase: int = 2,
-                 np_pretrain_weights: str = None,
-                 mit_b2_pretrain_weights: str = None,
-                 config_path: str = None,
+                 np_pretrain_weights: str = '/mnt/data0/dubo/workspace/IMDLBenCo/IMDLBenCo/model_zoo/trufor/noiseprint.pth',
+                 mit_b2_pretrain_weights: str = '/mnt/data0/dubo/workspace/IMDLBenCo_dev/IMDLBench/model_zoo/trufor/mit_b2.pth',
+                 config_path: str = '/mnt/data0/dubo/workspace/IMDLBenCo/configs/trufor.yaml',
                  det_resume_ckpt: str = None
                  ):
         super(Trufor, self).__init__()
@@ -42,8 +42,7 @@ class Trufor(nn.Module):
         else:
             raise NotImplementedError('Trufor training phase not implement!')
 
-    def weighted_cross_entropy_loss(self, prediction, target, gamma_0=0.5, gamma_1=2.5, epsilon=1e-7):
-        prediction = torch.clamp(prediction, epsilon, 1 - epsilon)
+    def weighted_cross_entropy_loss(self, prediction, target, gamma_0=0.5, gamma_1=2.5):
         loss = - (gamma_0 * (1 - target) * torch.log(1 - prediction) +
                   gamma_1 * target * torch.log(prediction))
         return loss.mean()
@@ -75,7 +74,7 @@ class Trufor(nn.Module):
         pred_mask, conf, det, npp = self.model(image)
         pred_mask = F.softmax(pred_mask, dim=1)
         pred_mask = pred_mask[:, -1, ...].unsqueeze(1)
-        pred_label = torch.sigmoid(det).squeeze()
+        pred_label = torch.sigmoid(det)
 
         if self.phase == 2:
             loss_ce = self.weighted_cross_entropy_loss(pred_mask, mask)
@@ -129,3 +128,6 @@ class Trufor(nn.Module):
             }
 
         return output_dict
+
+if __name__ == '__main__':
+    model = Trufor()

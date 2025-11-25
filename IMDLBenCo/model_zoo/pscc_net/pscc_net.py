@@ -15,7 +15,7 @@ from IMDLBenCo.registry import MODELS
 class PSCC_Net(nn.Module):
     def __init__(self,
                  input_size: int = 256,
-                 pretrain_path: str = None
+                 pretrain_path: str = '/mnt/data0/dubo/workspace/IMDLBenCo/IMDLBenCo/model_zoo/pscc/hrnet_w18_small_v2.pth'
                  ):
         super(PSCC_Net, self).__init__()
         self.FENet = get_seg_model(get_hrnet_cfg(pretrain_path))
@@ -47,37 +47,32 @@ class PSCC_Net(nn.Module):
         if (mask1 == 1).sum():
             mask1_balance[mask1 == 1] = 0.5 / ((mask1 == 1).sum().to(torch.float) / mask1.numel())
             mask1_balance[mask1 == 0] = 0.5 / ((mask1 == 0).sum().to(torch.float) / mask1.numel())
-        # else:
-        #     print('Mask1 balance is not working!')
+        else:
+            print('Mask1 balance is not working!')
 
         mask2_balance = torch.ones_like(mask2)
         if (mask2 == 1).sum():
             mask2_balance[mask2 == 1] = 0.5 / ((mask2 == 1).sum().to(torch.float) / mask2.numel())
             mask2_balance[mask2 == 0] = 0.5 / ((mask2 == 0).sum().to(torch.float) / mask2.numel())
-        # else:
-        #     print('Mask2 balance is not working!')
+        else:
+            print('Mask2 balance is not working!')
 
         mask3_balance = torch.ones_like(mask3)
         if (mask3 == 1).sum():
             mask3_balance[mask3 == 1] = 0.5 / ((mask3 == 1).sum().to(torch.float) / mask3.numel())
             mask3_balance[mask3 == 0] = 0.5 / ((mask3 == 0).sum().to(torch.float) / mask3.numel())
-        # else:
-        #     print('Mask3 balance is not working!')
+        else:
+            print('Mask3 balance is not working!')
 
         mask4_balance = torch.ones_like(mask4)
         if (mask4 == 1).sum():
             mask4_balance[mask4 == 1] = 0.5 / ((mask4 == 1).sum().to(torch.float) / mask4.numel())
             mask4_balance[mask4 == 0] = 0.5 / ((mask4 == 0).sum().to(torch.float) / mask4.numel())
-        # else:
-        #     print('Mask4 balance is not working!')
+        else:
+            print('Mask4 balance is not working!')
 
         return mask1_balance, mask2_balance, mask3_balance, mask4_balance
 
-
-    def forward_features(self, image, *args, **kwargs):
-        feat = self.FENet(image)
-        return feat
-    
     def forward(self, image, mask, label, *args, **kwargs):
 
         label = label.float()
@@ -93,19 +88,20 @@ class PSCC_Net(nn.Module):
         mask1_balance, mask2_balance, mask3_balance, mask4_balance = self.get_mask_weight(mask)
 
         # forward
-        feat = self.forward_features(image)
-        
+        feat = self.FENet(image)
         [pred_mask1, pred_mask2, pred_mask3, pred_mask4] = self.SegNet(feat)
-        pred_mask = torch.sigmoid(pred_mask1)
+        pred_mask = pred_mask1
         pred_logit = self.ClsNet(feat)
         pred_logit = torch.softmax(pred_logit, dim=1)
         pred_label = pred_logit[:, -1, ...]
+
         # loss
         mask1_loss = torch.mean(BCE_loss_full(pred_mask1, mask1) * mask1_balance)
         mask2_loss = torch.mean(BCE_loss_full(pred_mask2, mask2) * mask2_balance)
         mask3_loss = torch.mean(BCE_loss_full(pred_mask3, mask3) * mask3_balance)
         mask4_loss = torch.mean(BCE_loss_full(pred_mask4, mask4) * mask4_balance)
         seg_loss = mask1_loss + mask2_loss + mask3_loss + mask4_loss
+
         cls_loss = F.binary_cross_entropy(pred_label, label)
 
         combined_loss = seg_loss + cls_loss

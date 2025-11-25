@@ -18,7 +18,7 @@ class Cat_Net(nn.Module):
   https://discuss.pytorch.org/t/dataparallel-imbalanced-memory-usage/22551/21
   """
 
-  def __init__(self, cfg_file):
+  def __init__(self, cfg_file="./configs/CAT_full.yaml"):
     super(Cat_Net, self).__init__()
     cfg = None
     with open(cfg_file, "r") as f:
@@ -27,20 +27,12 @@ class Cat_Net(nn.Module):
     self.model = get_seg_model(cfg)
     self.loss = CrossEntropy(ignore_label=cfg.TRAIN.IGNORE_LABEL, weight=torch.FloatTensor([0.5, 2.5])).cuda()
 
-
-  def forward_features(self, image, mask, DCT_coef, qtables, **kwargs):
+  def forward(self, image, mask, DCT_coef, qtables, label, name, if_predcit_label=None, edge_mask=None, shape=None, ):
     images, masks = self.__post_process_tensor(image, mask, DCT_coef)
     images, masks = images.detach(), masks.squeeze(1).detach()
     qtables = qtables.unsqueeze(1)
     outputs = self.model(images.float(), qtables.float())
-    return outputs, masks
-  
-
-  def forward(self, image, mask, DCT_coef, qtables, if_predcit_label=None, edge_mask=None, shape=None, *args, **kwargs):
-
-    outputs, masks = self.forward_features(image, mask, DCT_coef, qtables)
     loss = self.loss(outputs, masks.long())
-    
     pred = F.softmax(outputs, dim=1)[:, 1].unsqueeze(1)
     pred = F.interpolate(pred, size=(image.shape[2], image.shape[3]), mode='bicubic')
     output_dict = {

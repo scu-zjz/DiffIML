@@ -80,7 +80,7 @@ class Registry:
     
     def _suggest_correction(self, input_string: str) -> Optional[str]:
         """Suggest the most similar string from the registered modules."""
-        suggestions = difflib.get_close_matches(input_string, self._module_dict.keys(), n=3, cutoff=0.3)
+        suggestions = difflib.get_close_matches(input_string, self._module_dict.keys(), n=1, cutoff=0.6)
         if suggestions:
             return suggestions[0]
         return None
@@ -89,24 +89,10 @@ class Registry:
         if name in self._module_dict:
             return self._module_dict[name]
         suggestion = self._suggest_correction(name)
-        print(f"{self}")
         if suggestion:
             raise KeyError(f'"{name}" is not registered in {self.name}. Did you mean "{suggestion}"?')
         else:
             raise KeyError(f'"{name}" is not registered in {self.name} and no similar names were found.')
-    def get_lower(self, name):
-        """Get a module by name, ignoring case."""
-        for key in self._module_dict.keys():
-            if key.lower() == name.lower():
-                return self._module_dict[key]
-        suggestion = self._suggest_correction(name)
-        lower_name = name.lower()
-        print(f"{self}")
-        if suggestion:
-            lower_suggestion = suggestion.lower()
-            raise KeyError(f'Nether "{name}" nor lower-case "{lower_name}" is registered in {self.name}. Did you mean "{suggestion}" or "{lower_suggestion}"?')
-        else:
-            raise KeyError(f'Nether "{name}" nor lower-case "{lower_name}" is registered in {self.name} and no similar names were found.')
 
     # @property
     # def children(self):
@@ -242,3 +228,5 @@ MODELS = Registry(name = 'MODELS')
 DATASETS = Registry(name = 'DATASETS')
 
 POSTFUNCS = Registry(name = 'POSTFUNCS')
+
+PROTOCOLS = Registry(name = 'PROTOCOLS')

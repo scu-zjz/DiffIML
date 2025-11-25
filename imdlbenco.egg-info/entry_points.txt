@@ -1,0 +1,2 @@
+[console_scripts]
+benco = IMDLBenCo.cli:main

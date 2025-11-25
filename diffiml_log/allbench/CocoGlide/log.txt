@@ -1,0 +1,27 @@
+{"test_pixel-level F1": 0.2025409731252098, "epoch": 20}
+{"test_pixel-level F1": 0.10560600111137879, "epoch": 36}
+{"test_pixel-level F1": 0.31648764646678285, "epoch": 44}
+{"test_pixel-level F1": 0.18015778068413024, "epoch": 50}
+{"test_pixel-level F1": 0.24298576663782895, "epoch": 60}
+{"test_pixel-level F1": 0.3252555532341674, "epoch": 84}
+{"test_pixel-level F1": 0.2552787497472586, "epoch": 100}
+{"test_pixel-level F1": 0.3192770853624164, "epoch": 104}
+{"test_pixel-level F1": 0.19829566834347048, "epoch": 124}
+{"test_pixel-level F1": 0.17165739949385722, "epoch": 148}
+{"test_pixel-level F1": 0.2544944135890078, "epoch": 150}
+{"test_pixel-level F1": 0.24990007515487705, "epoch": 199}
+{"test_pixel-level F1": 0.06578394450007563, "epoch": 20}
+{"test_pixel-level F1": 0.2539227413430417, "epoch": 36}
+{"test_pixel-level F1": 0.12600677981165345, "epoch": 44}
+{"test_pixel-level F1": 0.15205705087129456, "epoch": 50}
+{"test_pixel-level F1": 0.15990362304780434, "epoch": 60}
+{"test_pixel-level F1": 0.31079934746496574, "epoch": 69}
+{"test_pixel-level F1": 0.16486585240860469, "epoch": 84}
+{"test_pixel-level F1": 0.18561194856745478, "epoch": 100}
+{"test_pixel-level F1": 0.2865591649707371, "epoch": 104}
+{"test_pixel-level F1": 0.20828226687011295, "epoch": 124}
+{"test_pixel-level F1": 0.17887139184737758, "epoch": 148}
+{"test_pixel-level F1": 0.22103948340934068, "epoch": 150}
+{"test_pixel-level F1": 0.2600416385890074, "epoch": 199}
+{"test_pixel-level F1": 0.33453548492556784, "epoch": 59}
+

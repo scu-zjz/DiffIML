@@ -282,8 +282,7 @@ class ObjectFormer(nn.Module):
         self.encoder_net_r[0].load_state_dict({k.replace('patch_embed.proj.','') : v for k, v in state_dict.items() if 'patch_embed' in k})
         self.encoder_net_q[0].load_state_dict({k.replace('patch_embed.proj.','') : v for k, v in state_dict.items() if 'patch_embed' in k})
         self.pos_encoding = nn.Parameter(state_dict['pos_embed'])
-
-    def forward_features(self, image):
+    def forward(self, image, mask, label, *args, **kwargs):        
         x_rgb = self.encoder_net_r(image)
         x_freq = self.high_freq_extractor(image)
         x_freq = self.encoder_net_q(x_freq)
@@ -306,13 +305,10 @@ class ObjectFormer(nn.Module):
         for encoder_decoder in self.encoder_decoders:
             patch_embeddings = encoder_decoder(patch_embeddings)
 
-        features = patch_embeddings.permute(0, 2, 1).reshape(batch_size, -1, height, width)  # Shape back to [batch_size, embedding_dim, height, width]
-        return features
+        refined_patches = patch_embeddings.permute(0, 2, 1).reshape(batch_size, -1, height, width)  # Shape back to [batch_size, embedding_dim, height, width]
 
-    def forward(self, image, mask, label, *args, **kwargs):        
-        features = self.forward_features(image)
 
-        mask_pred = F.interpolate(features, scale_factor=2, mode='bilinear', align_corners=False)
+        mask_pred = F.interpolate(refined_patches, scale_factor=2, mode='bilinear', align_corners=False)
         for layer in self.localization:
             mask_pred = layer(mask_pred)
             mask_pred = F.interpolate(mask_pred, scale_factor=2, mode='bilinear', align_corners=False)

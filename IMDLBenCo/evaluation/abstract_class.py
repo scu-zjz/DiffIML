@@ -13,25 +13,9 @@ class AbstractEvaluator(object): # 想了想没必要用nn.module 反而可能�
         self.name = None
         self.desc = None
         self.threshold = None
-    def _check_pixel_level_params(self, predict, mask):
-        if predict is None:
-            raise ValueError(f"Detect none mask predict from the model, cannot calculate {self.name}. Please remove Pixel-level metrics from the script, or check the model output.")
-        if mask is None:
-            raise ValueError(f"Detect none mask label from the dataset, cannot calculate {self.name}. Please remove Pixel-level metrics from the script, or check the dataset output.")
-    def _chekc_image_level_params(self, predict_label, label):
-        if predict_label is None:
-            raise ValueError(f"Detect none image-level predict label from the model, cannot calculate {self.name}. Please remove Image-level metrics from the script, or check the model output.")
-        if label is None:
-            raise ValueError(f"Detect none image-level binary label from the dataset, cannot calculate {self.name}. Please remove Image-level metrics from the script, or check the dataset output.")
     def batch_update(self, predict, pred_label, mask, shape_mask=None, *args, **kwargs):
         """
         本函数在每个batch结尾update。
-        """
-        raise NotImplementedError
-    def remain_update(self, predict, pred_label, mask, shape_mask=None, *args, **kwargs):
-        """
-        本函数在每个batch结尾update。
-        主要用于处理在最后一个batch之后的剩余数据。
         """
         raise NotImplementedError
     def epoch_update(self):
