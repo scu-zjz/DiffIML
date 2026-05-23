@@ -39,7 +39,6 @@ def default_mask_getter(batch: Any) -> torch.Tensor:
 
     if not torch.is_tensor(mask):
         mask = torch.as_tensor(mask)
-    # Ensure shape (B,1,H,W)
     if mask.dim() == 3:
         mask = mask.unsqueeze(1)
     elif mask.dim() != 4:
@@ -72,7 +71,7 @@ def evaluate_vae_upper_bound(
     mask_getter: Callable[[Any], torch.Tensor] = default_mask_getter,
     binarize_input_mask: bool = True,
     limit_batches: Optional[int] = None,
-    return_tensors: bool = False, # 接受 DDP 的参数，但不再需要
+    return_tensors: bool = False,
 ) -> Dict[str, Any]:
     """Evaluate VAE-only upper bound by encode->decode without diffusion.
 
@@ -90,9 +89,7 @@ def evaluate_vae_upper_bound(
     Returns:
         dict with keys: f1 (at 0.5), threshold, tp, fp, fn
     """
-    # --- MODIFICATION: Hardcode threshold to 0.5 ---
     threshold = 0.5
-    # --- END MODIFICATION ---
 
     tp_sum = torch.zeros(1, device=device, dtype=torch.float64)
     fp_sum = torch.zeros(1, device=device, dtype=torch.float64)
@@ -108,14 +105,11 @@ def evaluate_vae_upper_bound(
 
         # encode -> decode
         latent = encode_fn(mask)  # (B,C,h,w)
-        recon = decode_fn(latent)  # (B,1,H,W) or (B,3,H,W)
-        recon = _ensure_single_channel(recon) # (B,1,H,W) in [-1, 1]
+        recon = decode_fn(latent)
+        recon = _ensure_single_channel(recon)
 
-        # VAE 解码器 (如 SD VAE) 输出在 [-1, 1] 范围。
-        # 必须将其重映射到 [0, 1] 才能作为概率图。
-        prob = torch.clamp((recon + 1.0) / 2.0, 0.0, 1.0) # (recon:[-1,1] -> prob:[0, 1])
+        prob = torch.clamp((recon + 1.0) / 2.0, 0.0, 1.0)
 
-        # --- MODIFICATION: Use fixed threshold ---
         pred = (prob > threshold).float()
         tp = (pred * mask).sum(dtype=torch.float64)
         fp = (pred * (1.0 - mask)).sum(dtype=torch.float64)
@@ -124,9 +118,7 @@ def evaluate_vae_upper_bound(
         tp_sum[0] += tp
         fp_sum[0] += fp
         fn_sum[0] += fn
-        # --- END MODIFICATION ---
 
-    # Micro-averaged F1 over the whole dataset: F1 = 2TP / (2TP + FP + FN)
     f1 = (2.0 * tp_sum) / (2.0 * tp_sum + fp_sum + fn_sum + 1e-8)
     
     f1_val = float(f1.item())
@@ -215,16 +207,14 @@ def evaluate_latent_distribution(
 
 
 if __name__ == "__main__":
-    # Optional CLI to run upper-bound evaluation quickly without editing training code
     import argparse
-    # 动态导入 AutoencoderKL
     try:
         from diffusers.models import AutoencoderKL
     except ImportError:
         raise SystemExit("Please install diffusers: pip install diffusers transformers")
 
     parser = argparse.ArgumentParser(description="Evaluate VAE-only upper bound (encode->decode) for Teacher/Student")
-    # Data
+
     parser.add_argument("--data_path", type=str, required=True, help="Path to a JSON dataset describing image/mask pairs or masks")
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_workers", type=int, default=4)
@@ -234,15 +224,13 @@ if __name__ == "__main__":
     parser.add_argument("--mask_key", type=str, default=None, help="JSON key (or comma-separated keys or dotted paths) to locate mask path, e.g. 'mask' or 'meta.mask' or 'gt_path,mask_path'")
     parser.add_argument("--mask_root", type=str, default=None, help="Optional root dir to prepend to mask relative paths")
 
-    # Teacher (SD VAE)
     parser.add_argument("--original_vae_path", type=str, default=None, help="Path to SD VAE (folder for AutoencoderKL.from_pretrained)")
 
-    # Student (LightVAE). We allow dynamic import of a class implementing encoder/decoder compatible API
     parser.add_argument("--student_class", type=str, default=None, help="Python path to LightVAE class, e.g. IMDLBenCo.model_zoo.diffiml.diffiml.SlimVAE")
     parser.add_argument("--student_weights", type=str, default=None, help="Path to student weights (state_dict)")
-    # Optional: JSON string to override student constructor kwargs (e.g. '{"block_out_channels":[32,64,128,256],"layers_per_block":2}')
+
     parser.add_argument("--student_init", type=str, default=None, help="JSON string of kwargs for student VAE constructor. Required if ctor differs from defaults.")
-    # Fallback args (if student_init is not provided, for simple VAEs like LightVAE)
+
     parser.add_argument("--latent_dim", type=int, default=4)
     parser.add_argument("--base_channels", type=int, default=32)
     parser.add_argument("--norm_layer_type", type=str, default="BatchNorm")
@@ -256,9 +244,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # -------------------------
-    # Optional DDP init (with torchrun)
-    # -------------------------
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     use_ddp = args.ddp and (world_size > 1)
@@ -274,9 +259,6 @@ if __name__ == "__main__":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         rank = 0
 
-    # -------------------------
-    # Dataset (JSON) -> Mask only
-    # -------------------------
     class JsonMaskDataset(Dataset):
         def __init__(self, json_path: str, image_size: int = 512, if_resizing: bool = True, mask_key: Optional[str] = None, mask_root: Optional[str] = None):
             with open(json_path, "r", encoding="utf-8") as f:
@@ -331,18 +313,15 @@ if __name__ == "__main__":
             return os.path.normpath(os.path.join(self.json_dir, p))
 
         def _find_mask_path(self, item: Any) -> str:
-            # 1) item 本身就是路径字符串
             if isinstance(item, str):
                 return self._resolve_path(item)
 
-            # 2) 优先使用 --mask_key 指定的键（支持逗号分隔与点路径）
             if self.mask_key and isinstance(item, dict):
                 for key in [k.strip() for k in self.mask_key.split(',') if k.strip()]:
                     val = self._get_by_dotted_path(item, key) if '.' in key else item.get(key, None)
                     if isinstance(val, str) and len(val) > 0:
                         return self._resolve_path(val)
 
-            # 3) 常见键的一阶或二阶查找
             if isinstance(item, dict):
                 for k in ["mask", "gt", "gt_path", "mask_path", "label_path", "ann", "ann_path"]:
                     if k in item and isinstance(item[k], str):
@@ -352,13 +331,11 @@ if __name__ == "__main__":
                         if k in item["meta"] and isinstance(item["meta"][k], str):
                             return self._resolve_path(item["meta"][k])
 
-            # 4) 递归搜索包含典型子串的键
             if isinstance(item, (dict, list)):
                 found = self._search_mask_recursively(item)
                 if isinstance(found, str):
                     return self._resolve_path(found)
 
-            # 5) 报错并提示可用键
             avail_keys = list(item.keys()) if isinstance(item, dict) else type(item).__name__
             raise KeyError(f"Mask path not found in JSON item. Please set --mask_key. Available top-level keys: {avail_keys}")
 
@@ -397,9 +374,7 @@ if __name__ == "__main__":
             for it in obj:
                 add_item(it)
         else:
-            # try as a single item
             add_item(obj)
-        # de-duplicate
         return sorted(list(dict.fromkeys(paths)))
 
     def _extract_mask_paths_from_json_file(path: str, mask_key: Optional[str], mask_root: Optional[str]) -> list[str]:
@@ -413,7 +388,6 @@ if __name__ == "__main__":
         out: list[str] = []
         for pat in globs:
             out.extend(glob.glob(os.path.join(root, pat), recursive=True))
-        # keep only image-like extensions
         exts = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
         out = [p for p in out if os.path.splitext(p)[1].lower() in exts]
         return sorted(list(dict.fromkeys(out)))
@@ -422,7 +396,6 @@ if __name__ == "__main__":
         with open(spec_path, "r", encoding="utf-8") as f:
             obj = json.load(f)
         if isinstance(obj, list) and obj and isinstance(obj[0], list) and len(obj[0]) == 2 and isinstance(obj[0][0], str):
-            # Composite spec
             all_paths: list[str] = []
             for entry in obj:
                 dtype, path = entry
@@ -436,7 +409,6 @@ if __name__ == "__main__":
                 if max_files_per_source is not None and len(paths) > max_files_per_source:
                     paths = paths[:max_files_per_source]
                 all_paths.extend(paths)
-            # de-duplicate
             all_paths = sorted(list(dict.fromkeys(all_paths)))
             return all_paths
         else:
@@ -503,8 +475,6 @@ if __name__ == "__main__":
 
         @torch.no_grad()
         def encode(self, mask01: torch.Tensor) -> torch.Tensor:
-            # mask01: (B,1,H,W) in {0,1}
-            # 映射到[-1, 1] 范围
             m = torch.where(mask01 > 0.5, 1.0, -1.0)
             m3 = m.repeat(1, 3, 1, 1)
             h = self.vae.encoder(m3)
@@ -516,7 +486,7 @@ if __name__ == "__main__":
         @torch.no_grad()
         def decode(self, latent: torch.Tensor) -> torch.Tensor:
             z = self.vae.post_quant_conv(latent / self.scale)
-            recon = self.vae.decoder(z)  # (B,3,H,W), in [-1, 1]
+            recon = self.vae.decoder(z) 
             return recon.mean(dim=1, keepdim=True) # (B,1,H,W), in [-1, 1]
 
     @dataclass
@@ -638,7 +608,6 @@ if __name__ == "__main__":
             weights=args.student_weights,
             device=device,
             init_overrides=init_overrides,
-            # 传递 fallback 参数
             latent_dim=args.latent_dim,
             base_channels=args.base_channels,
             norm_layer_type=args.norm_layer_type,
@@ -715,12 +684,14 @@ if __name__ == "__main__":
 
 
 
-# CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node=2 /mnt/data0/yunfei/workspace/IMDLBenCo/IMDLBenCo/evaluation/eval_vae_upper_bound.py \
+# Example launch:
+# CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node=2 \
+#   IMDLBenCo/evaluation/eval_vae_upper_bound.py \
 #   --ddp \
 #   --mode student \
-#   --data_path /mnt/data0/yunfei/workspace/IMDLBenCo/runs/balanced_dataset.json \
+#   --data_path ./runs/balanced_dataset.json \
 #   --student_class IMDLBenCo.model_zoo.diffiml.diffiml.LightVAE \
-#   --student_weights /mnt/data0/yunfei/workspace/IMDLBenCo/log/train_light_vae/checkpoints/light_vae_epoch_10.pth \
-#   --batch_size 32 \
+#   --student_weights ./log/train_light_vae/checkpoints/light_vae_weights.pth \
+#   --batch_size 16 \
 #   --image_size 512 \
 #   --if_resizing

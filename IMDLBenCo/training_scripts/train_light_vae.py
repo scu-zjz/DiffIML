@@ -31,7 +31,6 @@ def train_distillation(args):
         print(f"Single GPU setup: Rank {local_rank} on device {device}")
     torch.autograd.set_detect_anomaly(True)
 
-    # --- 4.1. 准备数据集 (不变) ---
     if local_rank == 0:
         print("Setting up dataset...")
     
@@ -71,7 +70,6 @@ def train_distillation(args):
     if local_rank == 0:
         print("DataLoader created.")
 
-    # --- 4.2. 准备模型 (不变) ---
     if local_rank == 0:
         print("Loading models...")
     
@@ -95,13 +93,12 @@ def train_distillation(args):
     
     student_vae = LightVAE(
         latent_dim=args.latent_dim,
-        base_channels=args.base_channels, # <--- 使用 base_channels
-        norm_layer_type=args.norm_layer_type, # <--- 使用 norm_layer_type
+        base_channels=args.base_channels,
+        norm_layer_type=args.norm_layer_type,
         activation_fn=act_fn,
-        latent_scale_factor=0.18215 # <--- 确保使用缩放
+        latent_scale_factor=0.18215
     ).to(device)
 
-    # DDP 包装
     if world_size > 1:
         student_vae = nn.parallel.DistributedDataParallel(student_vae, device_ids=[local_rank], output_device=local_rank)
         
@@ -109,7 +106,6 @@ def train_distillation(args):
     if local_rank == 0:
         print("Student VAE (Light) is in training mode.")
     
-    # (打印参数量 - 不变)
     if local_rank == 0:
         model_to_check = student_vae.module if world_size > 1 else student_vae 
         teacher_params = sum(p.numel() for p in teacher_vae.parameters())
@@ -118,7 +114,6 @@ def train_distillation(args):
         print(f"Student VAE Parameters: {student_params / 1e6:.2f} M")
         print(f"Parameter reduction: {100 * (1 - student_params / teacher_params):.2f}%")
 
-    # --- 4.3. 准备优化器和损失函数 (不变) ---
     model_to_optimize = student_vae.module if world_size > 1 else student_vae
     optimizer = optim.Adam(model_to_optimize.parameters(), lr=args.lr)
     # criterion = nn.MSELoss().to(device)
@@ -126,9 +121,7 @@ def train_distillation(args):
     if local_rank == 0:
         print(f"Optimizer: Adam (lr={args.lr}), Loss: MSELoss")
     start_epoch = 0
-    # (resume 逻辑 - 不变)
 
-    # --- 4.4. 训练循环 (!! 关键修改 !!) ---
     if local_rank == 0:
         print("Starting distillation training...")
         
@@ -139,39 +132,33 @@ def train_distillation(args):
         student_vae.train()
         total_loss = 0.0
         
-        # (只在 rank 0 上显示 TQDM)
         progress_bar = data_loader
         # if local_rank == 0:
         #     progress_bar = tqdm(data_loader, desc=f"Epoch {epoch+1}/{args.epochs}", unit="batch")
 
         for i, batch in enumerate(progress_bar):
             
-            # 1. 同时加载 mask 和 edge_mask
             masks_01 = batch['mask'].to(device).float()
             edge_masks_01 = batch['edge_mask'].to(device).float()
             masks = torch.where(masks_01 == 0, -1., 1.)
             edge_masks = torch.where(edge_masks_01 == 0, -1., 1.)
             all_inputs = torch.cat((masks, edge_masks), dim=0)
 
-            # 3. 对合并后的 all_inputs 执行蒸馏
+            # 对合并后的 all_inputs 执行蒸馏
             with torch.no_grad():
                 # target_masks, _ = teacher_vae(all_inputs)
                 target_latent = teacher_vae.encode_mask(all_inputs)
 
-            # 学生模型生成预测
             pred_masks, pred_latent = student_vae(all_inputs)
             
-            # 1. 重建损失
+            # 重建损失
             # reconstruction_loss = criterion(pred_masks, target_masks)
             reconstruction_loss = criterion(pred_masks, all_inputs)
 
-            # 2. 潜空间损失
             latent_loss = F.mse_loss(pred_latent, target_latent)
 
-            # 3. 总损失
             loss = reconstruction_loss + args.latent_loss_weight * latent_loss
 
-            # 反向传播
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -188,16 +175,14 @@ def train_distillation(args):
 
         avg_loss = total_loss / len(data_loader)
         
-        # DDP下同步损失
         if world_size > 1:
             loss_tensor = torch.tensor(avg_loss, device=device)
-            torch.distributed.all_reduce(loss_tensor, op=torch.distributed.ReduceOp.AVG) # (!! 同步点 2 !!)
+            torch.distributed.all_reduce(loss_tensor, op=torch.distributed.ReduceOp.AVG)
             avg_loss = loss_tensor.item()
             
         if local_rank == 0:
             print(f"Epoch {epoch+1}/{args.epochs}, Average Loss: {avg_loss:.6f}")
 
-        # 只有 Rank 0 才保存模型
         if local_rank == 0 and (epoch + 1) % args.save_interval == 0:
             os.makedirs(args.output_dir, exist_ok=True) 
             save_path = os.path.join(args.output_dir, f"light_vae_epoch_{epoch+1}.pth")
@@ -210,7 +195,6 @@ def train_distillation(args):
             torch.save(checkpoint_data, save_path)
             print(f"Saved checkpoint to {save_path}")
 
-    # --- 4.5. 保存最终模型 (不变) ---
     if local_rank == 0:
         os.makedirs(args.output_dir, exist_ok=True)
         final_save_path = os.path.join(args.output_dir, args.output_filename)
@@ -226,24 +210,20 @@ def train_distillation(args):
     if world_size > 1:
         torch.distributed.destroy_process_group()
 
-
-# --- 3. 参数解析 (启动入口) ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LightVAE Distillation Training Script")
 
-    # --- 路径参数 ---
     parser.add_argument('--data_path', type=str, 
-                        default='/mnt/data0/yunfei/workspace/IMDLBenCo/runs/balanced_dataset.json',
+                        default='./runs/balanced_dataset.json',
                         help='Path to the balanced_dataset.json file for training.')
     parser.add_argument('--original_vae_path', type=str, 
-                        default='/mnt/data0/yunfei/workspace/model/diffusion/stable_diff/pretrained/vae',
+                        default='./pretrained/sd-vae-ft-mse',
                         help='Path to the directory of the pre-trained Original VAE (teacher).')
     parser.add_argument('--output_dir', type=str, default='./checkpoints',
                         help='Directory to save the trained LightVAE weights.')
     parser.add_argument('--output_filename', type=str, default='light_vae_weights.pth',
                         help='Filename for the final saved weights.')
 
-    # --- 训练参数 ---
     parser.add_argument('--epochs', type=int, default=50,
                         help='Number of training epochs.')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -264,7 +244,6 @@ if __name__ == "__main__":
     parser.add_argument('--save_interval', type=int, default=10,
                         help='Save a checkpoint every N epochs.')
 
-    # --- LightVAE 模型参数 ---
     parser.add_argument('--latent_dim', type=int, default=4,
                         help='Latent dimension for LightVAE.')
     parser.add_argument('--base_channels', type=int, default=64,
@@ -282,7 +261,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # 只在主进程 (rank 0) 打印设置
     if int(os.environ.get("LOCAL_RANK", 0)) == 0:
         print("Starting LightVAE distillation training with the following settings:")
         print("-" * 30)

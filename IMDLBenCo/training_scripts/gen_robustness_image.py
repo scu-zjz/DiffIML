@@ -40,8 +40,8 @@ def plot_robustness(data, models, save_path, y_label):
 if __name__ == '__main__':
     # 用户自定义参数
     models_to_plot = ["Mantra-Net", "MVSS-Net", "CAT-Net", "NCL-IML", "PSCC-Net", "DiffIML"]  # 需要绘制的模型名称
-    save_path = "/mnt/data0/dubo/workspace/IMDLBenCo/data/robustness_tests.png"  # 保存路径
-    json_path = "/mnt/data0/dubo/workspace/IMDLBenCo/data/robustness.json"  # 保存数据的json路径
+    save_path = "./data/robustness_tests.png"  # 保存路径
+    json_path = "./data/robustness.json"  # 保存数据的json路径
     y_label = "F1"  # 纵轴名称
 
     # 读取JSON数据

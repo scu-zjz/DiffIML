@@ -1,0 +1,149 @@
+# NOTICE
+
+This project, **DiffIML**, is built on top of the open-source benchmark
+[IMDLBenCo](https://github.com/scu-zjz/IMDLBenCo) released by the SCU-ZJZ Lab
+under the **CC-BY-4.0** license.
+
+Per the CC-BY-4.0 license terms, this NOTICE file documents:
+
+1. Attribution to the original IMDLBenCo authors.
+2. The set of files that have been **added** or **modified** in this project.
+3. The list of third-party components and their respective licenses.
+
+---
+
+## 1. Upstream attribution
+
+* **Project**: IMDLBenCo — A Comprehensive Benchmark and Codebase for Image
+  Manipulation Detection & Localization
+* **Authors**: Xiaochen Ma, Xuekang Zhu, Lei Su, Zhuohang Jiang, Bo Du,
+  Xiwen Wang, Zeyu Lei, Wentao Feng, Chi-Man Pun, Ji-Zhe Zhou, et al.
+* **Repository**: <https://github.com/scu-zjz/IMDLBenCo>
+* **License**: CC-BY-4.0
+  (<https://creativecommons.org/licenses/by/4.0/>)
+* **Reference**:
+  ```
+  @inproceedings{ma2024imdlbenco,
+    title     = {IMDL-BenCo: A Comprehensive Benchmark and Codebase for
+                 Image Manipulation Detection & Localization},
+    author    = {Ma, Xiaochen and Zhu, Xuekang and Su, Lei and Jiang, Zhuohang
+                 and Du, Bo and Wang, Xiwen and Lei, Zeyu and Feng, Wentao
+                 and Pun, Chi-Man and Zhou, Ji-Zhe},
+    booktitle = {NeurIPS Datasets and Benchmarks},
+    year      = {2024}
+  }
+  ```
+
+The unmodified portions of the IMDLBenCo codebase remain licensed under
+CC-BY-4.0. See `LICENSE` for the full text of the license.
+
+---
+
+## 2. Files added or modified by this project
+
+### 2.1 New files (added by DiffIML authors)
+
+| Path | Purpose |
+|---|---|
+| `IMDLBenCo/model_zoo/diffiml/diffiml.py` | `DiffIML`, `LightVAE`, `SlimVAE`, `VAE`, `ConditionEncoder`, `Unet` modules |
+| `IMDLBenCo/model_zoo/diffiml/segformer.py` | Segformer (mit-b2 / b3 / b4 / b5) backbone adapted for use as the condition encoder |
+| `IMDLBenCo/model_zoo/diffiml/resnet.py` | Auxiliary backbone |
+| `IMDLBenCo/training_scripts/train_light_vae.py` | Distillation / training script for the lightweight mask VAE |
+| `IMDLBenCo/training_scripts/gen_robustness_image.py` | Robustness curve plotting utility |
+| `IMDLBenCo/evaluation/eval_vae_upper_bound.py` | Upper-bound evaluation for the mask VAE |
+| `evaluate_light_vae.py` | Pixel-space comparison between teacher VAE and LightVAE |
+| `evaluate_light_vae_latent.py` | Latent-space comparison between teacher VAE and LightVAE |
+| `runs/demo_train_diffiml.sh` | Stage-2 training launcher for DiffIML |
+| `runs/demo_train_light_vae.sh` | Stage-1 training launcher for LightVAE |
+| `runs/demo_test_diffiml.sh` | Multi-benchmark evaluation launcher |
+| `runs/demo_test_robustness_diffiml.sh` | Robustness evaluation launcher |
+| `runs/balanced_dataset.json` (template) | Training dataset configuration template |
+| `runs/test_datasets.json` (template) | Testing dataset configuration template |
+| `README.md` | Project landing page (re-written for DiffIML) |
+| `requirements.txt` | Python dependency list |
+| `CHANGELOG.md` | Release notes |
+| `CONTRIBUTING.md` | Contribution guideline |
+| `NOTICE` | This file |
+
+### 2.2 Modified files (forked from IMDLBenCo)
+
+| Path | Nature of modification |
+|---|---|
+| `IMDLBenCo/model_zoo/__init__.py` | Register the new `DiffIML` model |
+| `IMDLBenCo/training_scripts/demo.py` | Demo path updated for DiffIML |
+| `IMDLBenCo/training_scripts/test_robust.py` | Compatibility tweaks for DiffIML inference outputs |
+| `IMDLBenCo/training_scripts/utils/misc.py` | Minor logging / DDP-related adjustments |
+| `pyproject.toml` | Project metadata renamed for DiffIML |
+| `MANIFEST.in` | Updated to include new top-level docs and exclude large weights |
+| `.gitignore` | Extended to ignore checkpoints, large logs and personal artefacts |
+
+All other files under `IMDLBenCo/` (e.g. `iml_vit/`, `cat_net/`,
+`mvss_net/`, `trufor/`, `mantra_net/`, `object_former/`, `pscc_net/`,
+`span/`, `opensdi/`, `latent_iml/`, `sdiml/`, `noise_det/`,
+`datasets/`, `evaluation/`, `transforms/`, `modules/`, `utils/`, ...)
+are taken from IMDLBenCo without modification (or with only trivial
+formatting changes), and remain licensed under CC-BY-4.0.
+
+---
+
+## 3. Third-party components
+
+The following third-party software is used by this project. Each component
+remains under its own original license; no license text is altered here.
+
+| Component | License | Source |
+|---|---|---|
+| IMDLBenCo | CC-BY-4.0 | <https://github.com/scu-zjz/IMDLBenCo> |
+| PyTorch / torchvision | BSD-style | <https://github.com/pytorch/pytorch> |
+| HuggingFace `diffusers` | Apache-2.0 | <https://github.com/huggingface/diffusers> |
+| HuggingFace `transformers` | Apache-2.0 | <https://github.com/huggingface/transformers> |
+| HuggingFace `accelerate` | Apache-2.0 | <https://github.com/huggingface/accelerate> |
+| `safetensors` | Apache-2.0 | <https://github.com/huggingface/safetensors> |
+| Segformer | NVIDIA Source Code License | <https://github.com/NVlabs/SegFormer> |
+| Stable Diffusion VAE (`sd-vae-ft-mse`) | CreativeML Open RAIL-M | <https://huggingface.co/stabilityai/sd-vae-ft-mse> |
+| `albumentations` | MIT | <https://github.com/albumentations-team/albumentations> |
+| `timm` | Apache-2.0 | <https://github.com/huggingface/pytorch-image-models> |
+| `torchinfo` | MIT | <https://github.com/TylerYep/torchinfo> |
+| `einops` | MIT | <https://github.com/arogozhnikov/einops> |
+| `opencv-python` | Apache-2.0 | <https://github.com/opencv/opencv-python> |
+| `scikit-image` | BSD-3-Clause | <https://github.com/scikit-image/scikit-image> |
+| `scikit-learn` | BSD-3-Clause | <https://github.com/scikit-learn/scikit-learn> |
+| `numpy` / `scipy` | BSD-3-Clause | <https://numpy.org> / <https://scipy.org> |
+| `Pillow` | HPND | <https://github.com/python-pillow/Pillow> |
+| `tensorboard` | Apache-2.0 | <https://github.com/tensorflow/tensorboard> |
+| `tqdm` | MIT / MPL-2.0 | <https://github.com/tqdm/tqdm> |
+| `matplotlib` | PSF-based | <https://github.com/matplotlib/matplotlib> |
+| `prettytable` | BSD-3-Clause | <https://github.com/jazzband/prettytable> |
+
+For the full text of each license, please refer to the respective project
+repositories.
+
+---
+
+## 4. Datasets
+
+Datasets used in our experiments are released by their original authors and
+must be obtained from the official sources. They are **not** redistributed
+in this repository. Users are responsible for complying with the licenses
+of each dataset:
+
+* CASIA v1 / v2 — <https://github.com/namtpham/casia2groundtruth>
+* Columbia — <https://www.ee.columbia.edu/ln/dvmm/downloads/AuthSplicedDataSet/>
+* Coverage — <https://github.com/wenbihan/coverage>
+* NIST16 — <https://www.nist.gov/itl/iad/mig/media-forensics-challenge>
+* IMD2020 — <http://staff.utia.cas.cz/novozada/db/>
+* tampCOCO / compRAISE — released via [CAT-Net](https://github.com/mjkwon2021/CAT-Net)
+* FantasticReality — <http://zoi.utia.cas.cz/files/Fantastic_Reality.tar.gz>
+* Autosplice — <https://github.com/shanface33/AutoSplice_Dataset>
+* CocoGlide — released via [TruFor](https://github.com/grip-unina/TruFor)
+
+---
+
+## 5. Citation requirement
+
+If you use this project (in whole or in part), please cite **both** this
+work and the underlying IMDLBenCo benchmark. BibTeX entries are provided
+in `README.md`.
+
+The CC-BY-4.0 license requires that you retain this NOTICE and the
+attribution in any redistribution.

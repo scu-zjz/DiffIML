@@ -11,6 +11,7 @@ from .diffiml.diffiml import DiffIML
 from .noise_det.segformer import NoiseDet
 from .latent_iml.latent_iml import LatentIML
 from .sdiml.sdiml import SDIML
+from .opensdi.maskclip import MaskCLIP
 
 __all__ = [
     'IML_ViT',
@@ -26,4 +27,5 @@ __all__ = [
     "NoiseDet",
     "LatentIML",
     "SDIML",
+    "MaskCLIP"
 ]

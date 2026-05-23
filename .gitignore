@@ -1,16 +1,130 @@
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# =====================
+# Build & Distribution
+# =====================
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+MANIFEST
+
+# =====================
+# Virtual environments
+# =====================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# =====================
+# Model weights & checkpoints (LARGE!)
+# =====================
 *.pth
 *.pt
 *.ckpt
 *.bin
+*.safetensors
+*.onnx
+*.h5
+*.pkl
 ckpt/
-log/
-new_log/
-output_dir_iml_vit/
-IMDLBenCo_ckpt/
+ckpts/
+checkpoints/
 **/ckpt_dir/
+IMDLBenCo_ckpt/
+output_dir_iml_vit/
+
+# =====================
+# Logs & Outputs
+# =====================
+log/
+logs/
+new_log/
+diffiml_log/
+sota_dir/
+runs_log/
+output/
+outputs/
 **/train_*/
 **/events.out.tfevents.*
-*.tar*
+*.log
+*.logs
+error.log
+
+# =====================
+# Misc large files
+# =====================
+*.tar
+*.tar.gz
+*.tgz
 *.zip
-__pycache__/
-*.pyc
+*.rar
+*.7z
+*.npz
+*.npy
+
+# =====================
+# IDE / Editor
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =====================
+# Project-specific
+# =====================
+# 不上传内部数据快照（保留 README/JSON 模板）
+data/find_pred.json
+data/*.png
+vae_comparison_output/
+202.pdf
+开题答辩报告.md
+au_tp.py
+
+# 大型数据集索引文件（OpenSDI 等）— 用户应自行生成
+runs/opensdi_*.json
+runs/test_all_opensdi.json
+
+# 临时文件
+runs/temp.json
+runs/mytest.sh
+*.tmp
+*.bak
+
+# =====================
+# Jupyter
+# =====================
+*.ipynb_checkpoints

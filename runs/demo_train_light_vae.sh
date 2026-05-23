@@ -1,30 +1,40 @@
+#!/usr/bin/env bash
+# ===============================================
+# DiffIML — Stage 1: Train LightVAE
+#   A slim 1-channel VAE distilled from SD-VAE,
+#   used to compress mask & edge maps into latents.
+# ===============================================
+# Before running:
+#   1. Edit runs/balanced_dataset.json with your local data paths.
+#   2. (Optional) Download SD-VAE pretrained weights and set ORIGINAL_VAE_PATH
+#      if you want distillation; otherwise it will fall back to random init.
+# -----------------------------------------------
+
+set -e
+
 base_dir="./log/train_light_vae"
 mkdir -p ${base_dir}
 
-DATA_PATH="/mnt/data0/yunfei/workspace/IMDLBenCo/runs/balanced_dataset.json"
-ORIGINAL_VAE_PATH="/mnt/data0/yunfei/workspace/model/diffusion/stable_diff/pretrained/vae"
+# ------- Paths (EDIT ME) -------
+DATA_PATH="./runs/balanced_dataset.json"
+ORIGINAL_VAE_PATH="/path/to/sd-vae-ft-mse"          # optional teacher VAE
 OUTPUT_DIR="${base_dir}/checkpoints"
 
-# RESUME_PATH="${OUTPUT_DIR}/light_vae_epoch_30.pth"
-
-EPOCHS=30
-BATCH_SIZE=28
+# ------- Training Hyper-parameters -------
+EPOCHS=40
+BATCH_SIZE=8
 LR=1e-4
 NUM_WORKERS=4
-GPU_IDS="0,1,2,3"
+GPU_IDS="0,1,2,3,4,5,6,7"
 
 LATENT_DIM=4
 BASE_CHANNELS=32
 NORM_LAYER="BatchNorm"
-LATENT_WEIGHT=0.01 # 潜空间损失权重
-
+LATENT_WEIGHT=0.01
 LAYERS_PER_BLOCK=2
 ACTIVATION_FN="relu"
 
-OLD_IFS=$IFS
-IFS=','
-gpus=($GPU_IDS)
-IFS=$OLD_IFS
+OLD_IFS=$IFS; IFS=','; gpus=($GPU_IDS); IFS=$OLD_IFS
 NPROC=${#gpus[@]}
 
 CUDA_VISIBLE_DEVICES=${GPU_IDS} \

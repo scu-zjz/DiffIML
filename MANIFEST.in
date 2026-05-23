@@ -1,9 +1,18 @@
 # for help : https://setuptools.pypa.io/en/latest/userguide/datafiles.html
 include IMDLBenCo/*.py
-recursive-include IMDLBenCo *
+recursive-include IMDLBenCo *.py *.md *.txt *.yaml *.yml
 
 include README.md
-include requirements.txt
 include LICENSE
+include NOTICE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include requirements.txt
 
 recursive-include configs *
+recursive-include runs *.sh *.json
+
+# exclude large files
+global-exclude *.pth *.pt *.ckpt *.bin *.safetensors
+global-exclude __pycache__ *.pyc *.pyo
+global-exclude .DS_Store

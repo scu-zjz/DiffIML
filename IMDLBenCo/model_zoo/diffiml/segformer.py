@@ -382,7 +382,7 @@ class mit_b5(MixVisionTransformer):
 def get_mit_b2(pretrain=True):
     model = mit_b2()
     if pretrain:
-        model.load_state_dict(torch.load("/mnt/data0/yunfei/workspace/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b2.pth"),
+        model.load_state_dict(torch.load("/home/yunfei/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b2.pth"),
                               strict=False)
         print("load segformer pretrain success.")
     return model
@@ -391,7 +391,7 @@ def get_mit_b2(pretrain=True):
 def get_mit_b3(pretrain=True):
     model = mit_b3()
     if pretrain:
-        model.load_state_dict(torch.load("/mnt/data0/yunfei/workspace/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b3.pth"),
+        model.load_state_dict(torch.load("/home/yunfei/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b3.pth"),
                               strict=False)
         print("load segformer pretrain success.")
 
@@ -401,7 +401,7 @@ def get_mit_b3(pretrain=True):
 def get_mit_b4(pretrain=True):
     model = mit_b4()
     if pretrain:
-        model.load_state_dict(torch.load("/mnt/data0/yunfei/workspace/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b4.pth"),
+        model.load_state_dict(torch.load("/home/yunfei/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b4.pth"),
                               strict=False)
         print("load segformer pretrain success.")
 
@@ -411,7 +411,7 @@ def get_mit_b4(pretrain=True):
 def get_mit_b5(pretrain=True):
     model = mit_b5()
     if pretrain:
-        model.load_state_dict(torch.load("/mnt/data0/yunfei/workspace/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b5.pth"),
+        model.load_state_dict(torch.load("/home/yunfei/IMDLBenCo/IMDLBenCo/model_zoo/diffiml/mit_b5.pth"),
                               strict=False)
         print("load segformer pretrain success.")
 
