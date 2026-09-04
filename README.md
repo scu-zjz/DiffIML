@@ -11,8 +11,6 @@ All code in this project is developed based on the [IMDLBenCo](https://github.co
 
 For any dataset-related issues or additional resources, please refer to the repository linked above. Below are the testing and training details for DiffIML based on this repository.
 
-📝 **Blog**: [分久必合：统一的伪造图像检测（Unified FID）](https://knightzjz.github.io/blog/unified-fid.html) / [Long Divided, Must Unite](https://knightzjz.github.io/blog/unified-fid-en.html) — an introduction to the Unified Fake Image Detection task and the discussion on why this task matters, and where the field is heading.
-
 ## 🔧 Test Instructions
 
 <details>
