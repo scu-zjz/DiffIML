@@ -82,24 +82,45 @@ DiffIML is trained in **two stages**: first the LightVAE mask compressor, then t
 
 ### 1. Download Segformer Pretrained Weights
 
-Download the Segformer **MiT-B3** ImageNet-1k pretrained weights from the official [SegFormer](https://github.com/NVlabs/SegFormer) repo and place the file at `IMDLBenCo/model_zoo/diffiml/mit_b3.pth` (or any path you prefer). For latent space modeling, you can either train the LightVAE from scratch or download our distilled weights.
+Download the Segformer **MiT-B3** ImageNet-1k pretrained weights from the official [SegFormer](https://github.com/NVlabs/SegFormer) repo and place the file at `IMDLBenCo/model_zoo/diffiml/mit_b3.pth` (or any path you prefer). For latent space modeling, choose one of the following options.
+
+#### Option A: Download distilled LightVAE weights
+
+[Download light_vae_weights.pth](https://github.com/scu-zjz/DiffIML/releases/download/lightvae/light_vae_weights.pth)
+
+From the repository root, run:
 
 ```bash
-sh runs/demo_train_light_vae.sh
+mkdir -p log/train_light_vae/checkpoints
+
+wget -O log/train_light_vae/checkpoints/light_vae_weights.pth \
+  https://github.com/scu-zjz/DiffIML/releases/download/lightvae/light_vae_weights.pth
 ```
 
+With this checkpoint, you can skip Stage 1 distillation and proceed
+to Stage 2 below. Set `LIGHT_VAE_WEIGHTS` in
+`runs/demo_train_diffiml.sh` to the downloaded file path.
+
+#### Option B: Train LightVAE from scratch
+
+Configure the dataset and teacher VAE paths in
+`runs/demo_train_light_vae.sh`, then run:
+
+```bash
+bash runs/demo_train_light_vae.sh
+```
 ### 2. Configure Parameters
 
 Before running the training script, edit the parameters in `runs/train_diffiml.sh`:
 
 1. `seg_pretrain_path`: Path pointing to the Segformer weights (e.g., `IMDLBenCo/model_zoo/diffiml/mit_b3.pth`).
 2. `data_path`: Path to your `balanced_dataset.json`.
-3. `student_weights`: Path to the distilled `light_vae_weights.pth`.
+3. `light_vae_weights`: Path to the distilled `light_vae_weights.pth`.
 
 ### 3. Run the Training Script
 
 ```bash
-sh runs/train_diffiml.sh
+bash runs/demo_train_diffiml.sh
 ```
 
 (Optional) Inspect the reconstruction quality:
